@@ -1,36 +1,42 @@
-// lib/main.dart → VERSÃO FINAL COM ABAS + ODDs ALTAS + RODAPÉ
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'controllers/home_controller.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher.dart';          // ← ESSA LINHA É OBRIGATÓRIA
+import '../controllers/home_controller.dart';
 
-void main() => runApp(const PalpitesTopApp());
+void main() {
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => HomeController()..loadMatches(),
+      child: const MyApp(),
+    ),
+  );
+}
 
-class PalpitesTopApp extends StatelessWidget {
-  const PalpitesTopApp({Key? key}) : super(key: key);
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => HomeController()..loadMatches(),
-      child: MaterialApp(
-        title: 'Palpites Top',
-        theme: ThemeData(primarySwatch: Colors.green),
-        home: const HomeComAbas(),
-        debugShowCheckedModeBanner: false,
-      ),
+    return MaterialApp(
+      title: 'Palpites Top',
+      theme: ThemeData(primarySwatch: Colors.green),
+      home: const HomeScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
 
-class HomeComAbas extends StatefulWidget {
-  const HomeComAbas({Key? key}) : super(key: key);
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
   @override
-  State<HomeComAbas> createState() => _HomeComAbasState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeComAbasState extends State<HomeComAbas> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
 
   @override
   void initState() {
@@ -39,91 +45,129 @@ class _HomeComAbasState extends State<HomeComAbas> with SingleTickerProviderStat
   }
 
   @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Palpites Top', style: TextStyle(color: Colors.white)),
+        title: const Text('Palpites Top'),
         backgroundColor: Colors.green[700],
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.yellow,
           tabs: const [
-            Tab(text: 'JOGOS DO DIA'),
-            Tab(text: 'PALPITES MANUAIS'),
-            Tab(text: 'ODDs ALTAS 4x-1000x'),
-            Tab(text: 'MEUS ACERTOS'),
+            Tab(text: 'Jogos do Dia'),
+            Tab(text: 'Palpites Manuais'),
+            Tab(text: 'ODDs Altas 4x+'),
+            Tab(text: 'Meus Acertos'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: const [
-          JogosDoDiaTab(),
-          PalpitesManuaisTab(),
-          OddsAltasTab(),
-          HistoricoTab(),
+          JogosDoDia(),
+          PalpitesManuais(),
+          OddsAltas(),
+          MeusAcertos(),
         ],
       ),
-      bottomNavigationBar: const RodapeMelhoresPalpites(),
+      bottomNavigationBar: const RodapePalpites(),
     );
   }
 }
 
-// ABA 1 – Jogos do dia (já tinha)
-class JogosDoDiaTab extends StatelessWidget {
-  const JogosDoDiaTab({Key? key}) : super(key: key);
+// ==================================== ABA 1 ====================================
+class JogosDoDia extends StatelessWidget {
+  const JogosDoDia({super.key});
+
   @override
   Widget build(BuildContext context) {
-    // aqui vai o código da lista de jogos que já temos
-    // (pode colar o ListView.builder que já estava funcionando)
     return Consumer<HomeController>(
-      builder: (context, controller, _) {
-        if (controller.isLoading) return const Center(child: CircularProgressIndicator());
-        if (controller.leagues.isEmpty) return const Center(child: Text('Sem jogos hoje'));
-        return const Text('JOGOS DO DIA – já funcionando'); // substitui depois
+      builder: (context, controller, child) {
+        if (controller.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (controller.leagues.isEmpty) {
+          return const Center(child: Text('Sem jogos hoje'));
+        }
+
+        return ListView.builder(
+          itemCount: controller.leagues.length,
+          itemBuilder: (context, index) {
+            final league = controller.leagues.keys.elementAt(index);
+            final matches = controller.leagues[league]!;
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: ListTile(
+                title: Text(league, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text('${matches.length} jogos'),
+                trailing: const Icon(Icons.chevron_right),
+              ),
+            );
+          },
+        );
       },
     );
   }
 }
 
-// ABA 2 – Palpites manuais (já tinha)
-class PalpitesManuaisTab extends StatelessWidget {
-  const PalpitesManuaisTab({Key? key}) : super(key: key);
+// ==================================== ABA 2 ====================================
+class PalpitesManuais extends StatelessWidget {
+  const PalpitesManuais({super.key});
+
   @override
-  Widget build(BuildContext context) => const Center(child: Text('Escolha seu palpite manual aqui'));
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text(
+        'Em breve: palpites manuais aqui',
+        style: TextStyle(fontSize: 18),
+      ),
+    );
+  }
 }
 
-// ABA 3 – ODDs ALTAS AUTOMÁTICAS (A ABA QUE VAI MUDAR TUDO)
-class OddsAltasTab extends StatelessWidget {
-  const OddsAltasTab({Key? key}) : super(key: key);
+// ==================================== ABA 3 ====================================
+class OddsAltas extends StatelessWidget {
+  const OddsAltas({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Consumer<HomeController>(
-      builder: (context, controller, _) {
-        final oddsAltas = controller.encontrarOddsAltas(); // nova função no controller
+      builder: (context, controller, child) {
+        final odds = controller.encontrarOddsAltas();
 
-        if (oddsAltas.isEmpty) {
-          return const Center(child: Text('Nenhuma odd alta encontrada agora\nVolte em 5 minutos!', textAlign: TextAlign.center));
+        if (odds.isEmpty) {
+          return const Center(child: Text('Sem odds altas no momento'));
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.all(12),
-          itemCount: oddsAltas.length,
+          padding: const EdgeInsets.all(8),
+          itemCount: odds.length,
           itemBuilder: (context, i) {
-            final o = oddsAltas[i];
+            final o = odds[i];
             return Card(
-              color: Colors.green[50],
               child: ListTile(
-                leading: const Icon(Icons.trending_up, color: Colors.green, size: 40),
-                title: Text('${o['home']} × ${o['away']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('${o['mercado']} → ${o['valor']}\nHorário: ${o['hora']}'),
-                trailing: Text('${o['odd']}x', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green)),
-                onTap: () {
-                  final url = 'https://www.bet365.com/#/AC/B1/C1/F^${o['fixtureId']}';
-                  launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                title: Text('${o['home']} × ${o['away']}'),
+                subtitle: Text('${o['mercado']} • ${o['hora']}'),
+                trailing: Text(
+                  '${o['odd']}x',
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+                onTap: () async {
+                  final uri = Uri.parse('https://www.bet365.com');
+                  if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Não foi possível abrir o link')),
+                    );
+                  }
                 },
               ),
             );
@@ -134,41 +178,60 @@ class OddsAltasTab extends StatelessWidget {
   }
 }
 
-// ABA 4 – Histórico (futuro)
-class HistoricoTab extends StatelessWidget {
-  const HistoricoTab({Key? key}) : super(key: key);
+// ==================================== ABA 4 ====================================
+class MeusAcertos extends StatelessWidget {
+  const MeusAcertos({super.key});
+
   @override
-  Widget build(BuildContext context) => const Center(child: Text('Seus acertos vão aparecer aqui'));
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text(
+        'Seus greens vão aparecer aqui',
+        style: TextStyle(fontSize: 18),
+      ),
+    );
+  }
 }
 
-// RODAPÉ FIXO COM OS MELHORES DO DIA
-class RodapeMelhoresPalpites extends StatelessWidget {
-  const RodapeMelhoresPalpites({Key? key}) : super(key: key);
+// ==================================== RODAPÉ ====================================
+class RodapePalpites extends StatelessWidget {
+  const RodapePalpites({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Consumer<HomeController>(
-      builder: (context, controller, _) {
-        final top5 = controller.encontrarOddsAltas().take(5).toList();
-        if (top5.isEmpty) return const SizedBox.shrink();
+      builder: (context, controller, child) {
+        final topOdds = controller.encontrarOddsAltas().take(3).toList();
+
+        if (topOdds.isEmpty) {
+          return Container(height: 60, color: Colors.green[800]);
+        }
 
         return Container(
-          height: 80,
+          height: 60,
           color: Colors.green[800],
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: top5.length,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            itemCount: topOdds.length,
             itemBuilder: (context, i) {
-              final o = top5[i];
+              final o = topOdds[i];
               return Padding(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(6),
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.yellow[700]),
-                  child: Text('${o['odd']}x\n${o['mercado']}', style: const TextStyle(color: Colors.black)),
-                  onPressed: () {
-                    launchUrl(Uri.parse('https://www.bet365.com/#/AC/B1/C1/F^${o['fixtureId']}'),
-                        mode: LaunchMode.externalApplication);
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  onPressed: () async {
+                    final uri = Uri.parse('https://www.bet365.com');
+                    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Erro ao abrir bet365')),
+                      );
+                    }
                   },
+                  child: Text(
+                    '${o['odd']}x',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ),
               );
             },
